@@ -95,7 +95,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'admin') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riora POS System - 高機能レジシステム</title>
+    <title>Solver POS System - 高機能レジシステム</title>
     <style>
         * {
             margin: 0;
@@ -640,7 +640,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'admin') {
 </head>
 <body>
     <div class="header">
-        <h1>Riora POS System - 高機能レジシステム</h1>
+        <h1>Solver POS System - 高機能レジシステム</h1>
     </div>
     
     <div class="container">

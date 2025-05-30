@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
     transaction_id VARCHAR(20) NOT NULL,
     action_type ENUM('edit', 'refund', 'void', 'restore') NOT NULL,
+    old_values JSON,
+    new_values JSON,
     admin_user VARCHAR(50) NOT NULL,
     reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

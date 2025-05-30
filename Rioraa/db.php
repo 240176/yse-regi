@@ -121,6 +121,20 @@ class Database {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function getTotalProducts() {
+        $sql = "SELECT COUNT(*) as total FROM products";
+        $stmt = $this->pdo->query($sql);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['total'] ?? 0;
+    }
+
+    public function getLowStockItems() {
+        $sql = "SELECT COUNT(*) as low_stock FROM products WHERE stock_quantity <= 5";
+        $stmt = $this->pdo->query($sql);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['low_stock'] ?? 0;
+    }
+
     public function getSalesHistory($filters = []) {
         $sql = "SELECT s.*, 
                        COUNT(si.id) as item_count,

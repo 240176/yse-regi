@@ -81,11 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
             
         case 'get_dashboard_stats':
             $summary = $db->getDailySummary();
+            $totalProducts = $db->getTotalProducts();
+            $lowStockItems = $db->getLowStockItems();
             echo json_encode([
                 'total_sales_today' => $summary['total_sales'] ?? 0,
                 'transactions_today' => $summary['transaction_count'] ?? 0,
-                'total_products' => 120,
-                'low_stock_items' => 8
+                'total_products' => $totalProducts,
+                'low_stock_items' => $lowStockItems
             ]);
             exit;
             
@@ -351,6 +353,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            table-layout: fixed;
+            word-wrap: break-word;
         }
         
         .sales-table th,
@@ -358,6 +362,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e9ecef;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .sales-table th {
@@ -652,6 +658,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
             .dashboard-stats {
                 grid-template-columns: 1fr;
             }
+            
+            .filters-section > div {
+                flex-direction: column;
+            }
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
@@ -738,22 +753,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
                 <div class="dashboard-stats" id="dashboardStats">
                     <div class="stat-card">
                         <h3>本日の売上</h3>
-                        <div class="value">¥125,000</div>
-                        <div class="change">前日比 +12%</div>
+                        <div class="value" id="todaySales">¥0</div>
+                        <div class="change">前日比 <span id="salesChange">0%</span></div>
                     </div>
                     <div class="stat-card">
                         <h3>本日の取引数</h3>
-                        <div class="value">45件</div>
-                        <div class="change">前日比 +8%</div>
+                        <div class="value" id="todayTransactions">0件</div>
+                        <div class="change">前日比 <span id="transactionsChange">0%</span></div>
                     </div>
                     <div class="stat-card">
                         <h3>登録商品数</h3>
-                        <div class="value">120個</div>
+                        <div class="value" id="totalProducts">0個</div>
                         <div class="change">在庫管理中</div>
                     </div>
                     <div class="stat-card">
                         <h3>在庫不足商品</h3>
-                        <div class="value">8個</div>
+                        <div class="value" id="lowStockItems">0個</div>
                         <div class="change">要補充</div>
                     </div>
                 </div>
@@ -965,7 +980,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
                 return;
             }
             
-            let tableHTML = `
+            let tableHTML = `<div class="table-responsive">
                 <table class="sales-table">
                     <thead>
                         <tr>
@@ -1006,7 +1021,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
                 `;
             });
             
-            tableHTML += '</tbody></table>';
+            tableHTML += '</tbody></table></div>';
             container.innerHTML = tableHTML;
         }
         
@@ -1093,10 +1108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
                             <td>${item.quantity}</td>
                             <td>¥${parseInt(item.subtotal).toLocaleString()}</td>
                             <td>
-                                ${sale.status === 'completed' ? `
-                                    <button class="btn btn-warning btn-sm" onclick="editItem(${item.id}, '${item.item_name}', ${item.price}, ${item.quantity})">編集</button>
-                                    <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">削除</button>
-                                ` : ''}
+                                <button class="btn btn-warning btn-sm" onclick="editItem(${item.id}, '${item.item_name}', ${item.price}, ${item.quantity})">編集</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">削除</button>
                             </td>
                         </tr>
                     `;
@@ -1356,6 +1369,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action'])) {
                 });
             }
         }
+
+        function updateDashboardStats() {
+            const formData = new FormData();
+            formData.append('admin_action', 'get_dashboard_stats');
+            
+            fetch('admin.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('todaySales').textContent = `¥${parseInt(data.total_sales_today).toLocaleString()}`;
+                document.getElementById('todayTransactions').textContent = `${data.transactions_today}件`;
+                document.getElementById('totalProducts').textContent = `${data.total_products}個`;
+                document.getElementById('lowStockItems').textContent = `${data.low_stock_items}個`;
+                
+                // 前日比の計算と表示
+                calculateAndDisplayChanges(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function calculateAndDisplayChanges(data) {
+            // 前日のデータを取得
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            const formData = new FormData();
+            formData.append('admin_action', 'get_daily_summary');
+            formData.append('date', yesterdayStr);
+            
+            fetch('admin.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(yesterdayData => {
+                // 売上高の前日比を計算
+                const salesChange = calculatePercentageChange(
+                    yesterdayData.total_sales || 0,
+                    data.total_sales_today
+                );
+                document.getElementById('salesChange').textContent = `${salesChange}%`;
+                
+                // 取引数の前日比を計算
+                const transactionsChange = calculatePercentageChange(
+                    yesterdayData.transaction_count || 0,
+                    data.transactions_today
+                );
+                document.getElementById('transactionsChange').textContent = `${transactionsChange}%`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function calculatePercentageChange(oldValue, newValue) {
+            if (oldValue === 0) return newValue > 0 ? '+100' : '0';
+            const change = ((newValue - oldValue) / oldValue) * 100;
+            return change >= 0 ? `+${Math.round(change)}` : `${Math.round(change)}`;
+        }
+
+        // 定期的にダッシュボードを更新
+        setInterval(updateDashboardStats, 30000); // 30秒ごとに更新
+
+        // ページ読み込み時にダッシュボードを更新
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboardStats();
+        });
     </script>
 </body>
 </html>
