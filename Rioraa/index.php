@@ -225,10 +225,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'admin') {
             grid-template-columns: repeat(4, 1fr);
             gap: 15px;
             margin-bottom: 25px;
+            aspect-ratio: 4/5;
+            min-height: 400px;
         }
         
         .calc-btn {
-            padding: 20px;
+            padding: 0;
             font-size: 18px;
             font-weight: 600;
             border: none;
@@ -237,6 +239,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'admin') {
             transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
         }
         
         .calc-btn::before {
@@ -614,7 +620,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'admin') {
             }
             
             .calculator-grid {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(4, 1fr);
+                min-height: 350px;
+            }
+            
+            .calc-btn {
+                font-size: 16px;
             }
             
             .action-buttons {
